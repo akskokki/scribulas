@@ -53,7 +53,7 @@
       .${CLS}:hover{color:var(--fgColor-accent,#4493f8);text-decoration:none}
       .${CLS}-i{vertical-align:-2px;margin-right:4px}
       .${CLS}-cc{margin-right:6px;padding:0 4px;border-radius:3px;
-        font-size:inherit;font-weight:600;
+        font-size:inherit;
         background:var(--cc-bg);color:var(--cc-fg)}
       .${CLS}-cc[data-bang]{box-shadow:inset 0 0 0 1px var(--cc-fg)}
     `,
