@@ -6,4 +6,4 @@ its own README covering setup.
 | | |
 |---|---|
 | [`github-userscript/`](github-userscript/) | Userscript adding tag labels and conventional-commit badges to GitHub commit lists |
-| [`statusline-command/`](statusline-command/) | Single-line Claude Code statusline |
+| [`claude-statusline/`](claude-statusline/) | Single-line Claude Code statusline |

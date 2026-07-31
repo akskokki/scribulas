@@ -1,4 +1,4 @@
-# statusline-command
+# claude-statusline
 
 A single-line Claude Code statusline. Personal config — trimmed down from
 [vfmatzkin/claude-statusline](https://github.com/vfmatzkin/claude-statusline).
