@@ -238,7 +238,7 @@
     tr.athing.comtr td.default { padding-bottom: 6px; }
     /* Left breathing room goes on the tree, not the indent cell, so the
        guide lines aren't offset from the levels they mark. */
-    .comment-tree { margin-left: 12px; }
+    .comment-tree { margin-left: 20px; }
     .comhead { padding-bottom: 2px; display: inline-block; }
 
     /* ---- Readability tweaks ---- */
