@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hacker News — Comfortable Dark Mode
 // @namespace    https://news.ycombinator.com/
-// @version      2.5
+// @version      2.9
 // @description  A warm, low-contrast dark theme for Hacker News that's easy on the eyes.
 // @author       you
 // @match        https://news.ycombinator.com/*
@@ -26,6 +26,7 @@
       --hn-visited:   #97928b;
       --hn-accent:    #e07a3f;  /* softened HN orange */
       --hn-accent-bg: #2a1e17;
+      --hn-guide:     #2a2a31;  /* comment indent guide lines */
     }
 
     html, body {
@@ -223,11 +224,21 @@
       line-height: 1.5;
     }
 
-    /* Comment rows need breathing room too. */
-    tr.athing.comtr > td { padding-bottom: 6px; }
-    /* The indent cell is first in every comment row — pad it to keep the
-       thread off the panel edge. */
-    tr.athing.comtr > td:first-child { padding-left: 10px; }
+    /* HN's comment tables have no cellspacing attribute, so browsers apply a
+       default 2px border-spacing around every cell. That's the 2px artifact
+       and the gap the indent guides can't paint into. */
+    .comment-tree, .comment-tree table, tr.athing.comtr table {
+      border-spacing: 0 !important;
+      border-collapse: separate !important;
+    }
+
+    /* Comment spacing goes on the content cell inside the nested table, NOT
+       the outer row td — padding there sits outside the .ind cell and breaks
+       the indent guides into disconnected stubs. */
+    tr.athing.comtr td.default { padding-bottom: 6px; }
+    /* Left breathing room goes on the tree, not the indent cell, so the
+       guide lines aren't offset from the levels they mark. */
+    .comment-tree { margin-left: 12px; }
     .comhead { padding-bottom: 2px; display: inline-block; }
 
     /* ---- Readability tweaks ---- */
@@ -244,13 +255,26 @@
     ::-webkit-scrollbar-thumb:hover { background: #4a4a54; }
   `;
 
+  // ---- Comment indent width ----
+  // HN indents replies with a spacer GIF sized indent*40px, so the step isn't
+  // a CSS property we can shrink. Hide the image and drive the cell width off
+  // the indent attribute instead.
+  const INDENT_STEP = 26; // px per nesting level (HN's default is 40)
+  let indentCss = 'td.ind img { display: none !important; }\n';
+
+  for (let i = 0; i <= 60; i++) {
+    indentCss += `td.ind[indent="${i}"] { width: ${i * INDENT_STEP}px !important; min-width: ${i * INDENT_STEP}px !important; }\n`;
+  }
+
+  const style = css + indentCss;
+
   // Inject immediately so there's no white flash before the page paints.
   if (typeof GM_addStyle === 'function') {
-    GM_addStyle(css);
+    GM_addStyle(style);
   } else {
-    const style = document.createElement('style');
-    style.textContent = css;
-    (document.head || document.documentElement).appendChild(style);
+    const el = document.createElement('style');
+    el.textContent = style;
+    (document.head || document.documentElement).appendChild(el);
   }
 
   // Tell the browser the page is dark so native widgets match.
