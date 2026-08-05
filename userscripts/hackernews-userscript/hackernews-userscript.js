@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hacker News — Comfortable Dark Mode
 // @namespace    https://news.ycombinator.com/
-// @version      2.4
+// @version      2.5
 // @description  A warm, low-contrast dark theme for Hacker News that's easy on the eyes.
 // @author       you
 // @match        https://news.ycombinator.com/*
@@ -224,7 +224,10 @@
     }
 
     /* Comment rows need breathing room too. */
-    tr.athing.comtr > td { padding-bottom: 8px; }
+    tr.athing.comtr > td { padding-bottom: 6px; }
+    /* The indent cell is first in every comment row — pad it to keep the
+       thread off the panel edge. */
+    tr.athing.comtr > td:first-child { padding-left: 10px; }
     .comhead { padding-bottom: 2px; display: inline-block; }
 
     /* ---- Readability tweaks ---- */
