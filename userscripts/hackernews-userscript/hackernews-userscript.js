@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Hacker News — Comfortable Dark Mode
 // @namespace    https://news.ycombinator.com/
-// @version      2.9
-// @description  A warm, low-contrast dark theme for Hacker News that's easy on the eyes.
+// @version      5.2
+// @description  A warm, low-contrast dark theme for Hacker News, with tighter comment indenting and infinite scroll.
 // @author       you
 // @match        https://news.ycombinator.com/*
 // @run-at       document-start
@@ -12,21 +12,23 @@
 (function () {
   'use strict';
 
+  /* ------------------------------------------------------------------ */
+  /* Theme                                                               */
+  /* ------------------------------------------------------------------ */
+
   const css = `
     :root {
       --hn-bg:        #16161a;  /* page background */
       --hn-surface:   #1c1c21;  /* main content panel */
-      --hn-surface-2: #232329;  /* subtle raised areas, inputs */
+      --hn-surface-2: #232329;  /* inputs, code blocks */
       --hn-border:    #32323a;
       --hn-text:      #d6d3cd;  /* body/comment text, warm off-white */
       --hn-title:     #ece8e2;  /* story titles — brightest thing on the page */
       --hn-dim:       #78746f;  /* metadata, timestamps, points */
       --hn-dimmer:    #605d59;
-      --hn-link:      #ece8e2;
       --hn-visited:   #97928b;
       --hn-accent:    #e07a3f;  /* softened HN orange */
       --hn-accent-bg: #2a1e17;
-      --hn-guide:     #2a2a31;  /* comment indent guide lines */
     }
 
     html, body {
@@ -59,8 +61,7 @@
       font-weight: 700;
     }
     .pagetop a:hover { color: var(--hn-accent) !important; }
-    /* the y18 logo box */
-    .pagetop img[src*="y18"], img[src*="y18"] {
+    img[src*="y18"] {
       border-color: var(--hn-accent) !important;
       opacity: 0.85;
     }
@@ -86,19 +87,6 @@
       color: var(--hn-accent) !important;
     }
 
-    /* HN puts the underline on the .hnmore SPAN, not the link inside it, so
-       the rule is drawn in the span's colour while the <a> colours only the
-       glyphs. Move the decoration onto the link so the two always match. */
-    .hnmore {
-      text-decoration: none !important;
-    }
-    .hnmore a, .hnmore a:link, .hnmore a:visited {
-      text-decoration: underline !important;
-    }
-    .hnmore a:hover {
-      color: var(--hn-accent) !important;
-    }
-
     /* ---- Comments ---- */
     .comment, .commtext, .commtext a {
       color: var(--hn-text) !important;
@@ -120,6 +108,7 @@
 
     .comhead .togg, .togg { color: var(--hn-dimmer) !important; }
     .coll { color: var(--hn-dim) !important; }
+    .athing:target { background: #24242b !important; }
 
     /* ---- Reply link ---- */
     /* HN wraps it in a literal <u>, which stacks with the comment-link
@@ -138,15 +127,20 @@
       color: var(--hn-accent) !important;
       text-decoration: none !important;
     }
-    .comment-tree .athing:target > td,
-    .athing:target { background: #24242b !important; }
 
-    /* Indentation spacer image is invisible on dark anyway, but keep spacing clean */
-    img[src*="s.gif"] { opacity: 0; }
+    /* ---- Date nav links ---- */
+    /* HN puts the underline on the .hnmore SPAN, not the link inside it, so
+       the rule is drawn in the span's colour while the <a> colours only the
+       glyphs. Move the decoration onto the link so the two always match. */
+    .hnmore { text-decoration: none !important; }
+    .hnmore a, .hnmore a:link, .hnmore a:visited {
+      text-decoration: underline !important;
+    }
+    .hnmore a:hover { color: var(--hn-accent) !important; }
 
-    /* ---- Vote links (arrows are hidden below; this covers downvote arrows
-           for users who have them) ---- */
-    .votelinks a, img[src*="grayarrow"], img[src*="triangle"] {
+    /* ---- Vote arrows (dark GIFs, so invert them) ---- */
+    .votearrow, .votelinks a, .votelinks img,
+    img[src*="grayarrow"], img[src*="triangle"] {
       filter: invert(0.72) hue-rotate(180deg) brightness(0.95);
     }
 
@@ -161,10 +155,7 @@
       outline: none !important;
       border-color: var(--hn-accent) !important;
     }
-    input[type="submit"], button {
-      background: var(--hn-surface-2) !important;
-      cursor: pointer;
-    }
+    input[type="submit"], button { cursor: pointer; }
     input[type="submit"]:hover, button:hover {
       border-color: var(--hn-accent) !important;
       color: var(--hn-accent) !important;
@@ -192,56 +183,30 @@
     pre { padding: 8px 10px; overflow-x: auto; }
 
     /* ---- Vertical rhythm ---- */
-    /* HN's spacer row is ~5px and vanishes on dark; give each story room. */
     tr.spacer { height: 9px !important; }
-
-    tr.athing td.title { padding-top: 3px; }
-    .subtext, .subline { display: inline-block; padding-top: 0; }
-
-    /* ---- Vote arrow: removed ---- */
-    .votearrow[title="upvote"], .votearrow {
-      display: none !important;
-    }
-    /* Collapse the now-empty arrow column so it doesn't leave a gap. */
-    tr.athing td.votelinks {
-      width: 0 !important;
-      padding: 0 !important;
-      vertical-align: middle !important;
-    }
-    tr.athing td.votelinks center { display: none; }
-
-    /* Rank recedes so the title carries the row. Both cells align on the
-       first text baseline rather than the cell top, so the number sits on
-       the same line as the title regardless of font size. */
     tr.athing td.title { vertical-align: baseline !important; }
+    /* Fixed width so the column doesn't re-measure when ranks reach three
+       digits mid-scroll. Numbers are right-aligned, so single and double
+       digits just gain space on the left — visually unchanged. */
     tr.athing td.title:first-child {
+      width: 2em;
+      min-width: 2em;
       padding-left: 10px;
       padding-right: 6px;
+      white-space: nowrap;
     }
     .rank {
       color: var(--hn-dimmer) !important;
       font-size: 0.8em;
       line-height: 1.5;
     }
+    .subtext, .subline { display: inline-block; padding-top: 0; }
 
-    /* HN's comment tables have no cellspacing attribute, so browsers apply a
-       default 2px border-spacing around every cell. That's the 2px artifact
-       and the gap the indent guides can't paint into. */
-    .comment-tree, .comment-tree table, tr.athing.comtr table {
-      border-spacing: 0 !important;
-      border-collapse: separate !important;
-    }
-
-    /* Comment spacing goes on the content cell inside the nested table, NOT
-       the outer row td — padding there sits outside the .ind cell and breaks
-       the indent guides into disconnected stubs. */
     tr.athing.comtr td.default { padding-bottom: 6px; }
-    /* Left breathing room goes on the tree, not the indent cell, so the
-       guide lines aren't offset from the levels they mark. */
-    .comment-tree { margin-left: 20px; }
+    .comment-tree { margin-left: 12px; }
     .comhead { padding-bottom: 2px; display: inline-block; }
 
-    /* ---- Readability tweaks ---- */
+    /* ---- Readability ---- */
     .commtext { line-height: 1.55; }
     .titleline { line-height: 1.5; }
     .titleline .sitebit, .titleline .sitestr { font-size: 0.92em; }
@@ -255,20 +220,22 @@
     ::-webkit-scrollbar-thumb:hover { background: #4a4a54; }
   `;
 
-  // ---- Comment indent width ----
+  /* ------------------------------------------------------------------ */
+  /* Comment indent width                                                */
+  /* ------------------------------------------------------------------ */
   // HN indents replies with a spacer GIF sized indent*40px, so the step isn't
   // a CSS property we can shrink. Hide the image and drive the cell width off
   // the indent attribute instead.
-  const INDENT_STEP = 26; // px per nesting level (HN's default is 40)
-  let indentCss = 'td.ind img { display: none !important; }\n';
 
+  const INDENT_STEP = 26; // px per nesting level (HN's default is 40)
+
+  let indentCss = 'td.ind img { display: none !important; }\n';
   for (let i = 0; i <= 60; i++) {
     indentCss += `td.ind[indent="${i}"] { width: ${i * INDENT_STEP}px !important; min-width: ${i * INDENT_STEP}px !important; }\n`;
   }
 
-  const style = css + indentCss;
-
   // Inject immediately so there's no white flash before the page paints.
+  const style = css + indentCss;
   if (typeof GM_addStyle === 'function') {
     GM_addStyle(style);
   } else {
@@ -277,9 +244,96 @@
     (document.head || document.documentElement).appendChild(el);
   }
 
-  // Tell the browser the page is dark so native widgets match.
   const meta = document.createElement('meta');
   meta.name = 'color-scheme';
   meta.content = 'dark';
   (document.head || document.documentElement).appendChild(meta);
+
+  /* ------------------------------------------------------------------ */
+  /* Infinite scroll                                                     */
+  /* ------------------------------------------------------------------ */
+  // Appends the next page's rows into the existing table. The "More" row is
+  // reused rather than replaced, so its position is stable and the observer
+  // never needs re-attaching.
+
+  function initInfiniteScroll() {
+    const moreLink = document.querySelector('a.morelink');
+    if (!moreLink) return; // last page, or a page without pagination
+
+    const moreRow = moreLink.closest('tr');
+    const tbody = moreRow.parentNode;
+    let loading = false;
+
+    async function loadNext() {
+      if (loading) return;
+      loading = true;
+      moreLink.dataset.label = moreLink.dataset.label || moreLink.textContent;
+      moreLink.textContent = 'Loading…';
+
+      try {
+        const res = await fetch(moreLink.href, { credentials: 'same-origin' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+
+        const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+        const nextMore = doc.querySelector('a.morelink');
+
+        // Rows to append: everything in the source table except its own
+        // spacer/More footer, which we already have.
+        const nextMoreRow = nextMore ? nextMore.closest('tr') : null;
+        const srcBody = nextMoreRow
+          ? nextMoreRow.parentNode
+          : doc.querySelector('tr.athing')?.parentNode;
+
+        if (!srcBody) throw new Error('no rows found');
+
+        const frag = document.createDocumentFragment();
+        for (const row of Array.from(srcBody.children)) {
+          if (row === nextMoreRow) continue;
+          if (row.classList.contains('morespace')) continue;
+          frag.appendChild(document.importNode(row, true));
+        }
+
+        // Insert above the spacer/More footer so it stays at the bottom.
+        const prev = moreRow.previousElementSibling;
+        const anchor = prev && prev.classList.contains('morespace') ? prev : moreRow;
+        tbody.insertBefore(frag, anchor);
+
+        if (nextMore) {
+          // Keep it relative, as HN serves it.
+          moreLink.setAttribute('href', nextMore.getAttribute('href'));
+          moreLink.textContent = moreLink.dataset.label;
+          loading = false;
+          // Re-run the check: if the footer is still on screen after
+          // appending, load the following page too.
+          observer.unobserve(moreRow);
+          observer.observe(moreRow);
+        } else {
+          observer.disconnect();
+          moreRow.remove();
+        }
+      } catch (err) {
+        console.error('[HN dark] infinite scroll:', err);
+        moreLink.textContent = moreLink.dataset.label;
+        loading = false;
+      }
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) loadNext();
+    }, { rootMargin: '1200px' });
+
+    observer.observe(moreRow);
+
+    // Clicking "More" still works as a manual fallback.
+    moreLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      loadNext();
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initInfiniteScroll);
+  } else {
+    initInfiniteScroll();
+  }
 })();
