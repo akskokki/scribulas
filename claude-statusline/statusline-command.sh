@@ -6,6 +6,12 @@
 
 set -f
 
+# Windows (Git Bash): a freshly winget-installed jq isn't on PATH until
+# Claude Code restarts
+if [ -n "$LOCALAPPDATA" ] && ! command -v jq >/dev/null; then
+    PATH="$PATH:$(cygpath -u "$LOCALAPPDATA")/Microsoft/WinGet/Packages/jqlang.jq_Microsoft.Winget.Source_8wekyb3d8bbwe"
+fi
+
 input=$(cat)
 [ -z "$input" ] && printf "Claude" && exit 0
 
@@ -40,7 +46,8 @@ pace_arrow() {
     local elapsed=$(( now - (resets_at - duration) ))
     [ "$elapsed" -le $(( duration / 50 )) ] && return
     local projected
-    projected=$(echo "$used_pct * $duration / $elapsed" | bc 2>/dev/null)
+    projected=$(awk -v u="$used_pct" -v d="$duration" -v e="$elapsed" \
+        'BEGIN { printf "%d", u * d / e }' 2>/dev/null)
     [ -z "$projected" ] && return
 
     if   [ "$projected" -gt 130 ]; then printf '%s' "${red}↑${reset}"
@@ -56,14 +63,19 @@ add() { [ -z "$out" ] && out+="$1" || out+="${sep}$1"; }
 # ===== Extract data =====
 now=$(date +%s)
 
-model=$(echo "$input"        | jq -r '.model.display_name // empty')
-used=$(echo "$input"         | jq -r '.context_window.used_percentage // empty')
-effort_level=$(echo "$input" | jq -r '.effort.level // empty')
-agent_name=$(echo "$input"   | jq -r '.agent.name // empty')
-rl_five=$(echo "$input"      | jq -r '.rate_limits.five_hour.used_percentage // empty')
-rl_resets_5h=$(echo "$input" | jq -r '.rate_limits.five_hour.resets_at // empty')
-cache_read=$(echo "$input"   | jq -r '.context_window.current_usage.cache_read_input_tokens // empty')
-cache_create=$(echo "$input" | jq -r '.context_window.current_usage.cache_creation_input_tokens // empty')
+# One jq call (process spawns are slow on Windows); fields joined by \x1f
+# so empty ones survive `read`, and jq's CRLF stripped.
+IFS=$'\x1f' read -r model used effort_level agent_name rl_five rl_resets_5h \
+    cache_read cache_create < <(echo "$input" | jq -r '[
+        .model.display_name,
+        .context_window.used_percentage,
+        .effort.level,
+        .agent.name,
+        .rate_limits.five_hour.used_percentage,
+        .rate_limits.five_hour.resets_at,
+        .context_window.current_usage.cache_read_input_tokens,
+        .context_window.current_usage.cache_creation_input_tokens
+    ] | map(. // "" | tostring) | join("\u001f")' | tr -d '\r')
 
 # "Claude Opus 4.6 (1M context)" → "Opus 4.6 (1M)"
 model="${model#Claude }"

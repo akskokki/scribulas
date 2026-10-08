@@ -9,8 +9,8 @@ Opus 5 │ medium │ 5% │ 19% ↓ │ ↻ 21:14 │ cache 98%
 
 ## Setup
 
-Needs `jq` and `bc`. Linux only — uses GNU `date -d`, so reset/pace times won't
-render on macOS.
+Needs `jq`. Linux or Windows (Git Bash) — uses GNU `date -d`, so reset/pace
+times won't render on macOS.
 
 ```bash
 cp statusline-command.sh ~/.claude/statusline-command.sh
@@ -26,6 +26,14 @@ Merge into `~/.claude/settings.json`:
     "command": "bash ~/.claude/statusline-command.sh"
   }
 }
+```
+
+On Windows, install jq with `winget install jqlang.jq` and point the command
+at Git Bash by full path — a bare `bash` can resolve to WSL's
+`C:\Windows\System32\bash.exe`:
+
+```json
+"command": "\"C:/Program Files/Git/bin/bash.exe\" C:/Users/<you>/.claude/statusline-command.sh"
 ```
 
 Restart Claude Code, or test directly:
@@ -79,5 +87,8 @@ cache rebuilding, not a fault.
   background `git fetch`, output lines 2–3, and the
   `budget`/`usage`/`sync`/`fetch-refresh` subcommands (BSD `sed -i ''`, broken
   on Linux anyway).
+- One `jq` call extracts every field (process spawns are slow on Windows),
+  `\x1f`-joined so empty fields survive `read`, with jq's Windows CRLF
+  stripped. The pace projection uses `awk` rather than `bc`.
 - Fields are appended with `add`, which handles the `│` separators. File order
   is display order.
